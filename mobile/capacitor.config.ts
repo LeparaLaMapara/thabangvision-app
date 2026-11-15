@@ -31,6 +31,8 @@ const config: CapacitorConfig = {
     errorPath: 'index.html',
   },
   backgroundColor: '#050505',
+  // Web console lines reach the native log in debug builds (CI smoke tests read them).
+  loggingBehavior: 'debug',
   android: {
     allowMixedContent: false,
     // The site reads this to know it is inside the app (lib/native/app.ts,

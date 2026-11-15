@@ -21,13 +21,19 @@ xcrun simctl list devices | grep "$DEVICE" | tee "$OUT/device.txt"
 xcrun simctl boot "$DEVICE" || true
 xcrun simctl bootstatus "$DEVICE" -b
 xcrun simctl install "$DEVICE" "$APP"
-xcrun simctl launch "$DEVICE" "$APP_ID" | tee "$OUT/launch.txt"
-sleep 25
+# --console-pty keeps the app's stdout, where Capacitor prints the web page's
+# console (lines starting with the lightning mark), including JavaScript errors.
+( xcrun simctl launch --console-pty --terminate-running-process "$DEVICE" "$APP_ID" > "$OUT/console.txt" 2>&1 & )
+sleep 30
 
 xcrun simctl io "$DEVICE" screenshot "$OUT/launch.png"
 xcrun simctl spawn "$DEVICE" log show --last 2m --predicate "process == \"App\"" > "$OUT/app-log.txt" 2>/dev/null || true
 RUNNING=$(xcrun simctl spawn "$DEVICE" launchctl list | grep -c "$APP_ID" || true)
 
+echo "--- web console (errors and warnings) ---"
+grep -aE "\[(error|warn)\]|Error|error" "$OUT/console.txt" | head -40 || true
 echo "running: $RUNNING"
 if [ "$RUNNING" = "0" ]; then echo "FAIL: app is not running after launch"; exit 1; fi
+# The live site rendered, not an error screen.
+if grep -aqE "couldn.t load|Application error" "$OUT/console.txt"; then echo "FAIL: the page showed an error"; exit 1; fi
 echo "PASS: installed, launched, still running"
