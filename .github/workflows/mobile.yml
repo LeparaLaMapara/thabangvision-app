@@ -34,7 +34,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mobile-${{ github.ref }}
+  group: mobile-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 env:
