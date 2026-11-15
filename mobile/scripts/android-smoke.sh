@@ -26,11 +26,13 @@ if [ -z "$PID" ]; then echo "FAIL: app is not running"; exit 1; fi
 if grep -q "FATAL EXCEPTION" "$OUT/logcat.txt"; then echo "FAIL: crash in log"; exit 1; fi
 if ! grep -q "$APP_ID" "$OUT/focus.txt"; then echo "FAIL: app is not the focused window"; exit 1; fi
 
-# The live site rendered inside the app (not the offline page): the WebView's
-# accessibility tree carries the page text.
-adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
-adb pull /sdcard/ui.xml "$OUT/ui.xml" >/dev/null 2>&1 || true
-if grep -qiE "Rentals|Studio|Book" "$OUT/ui.xml" 2>/dev/null; then echo "site rendered: yes"; else echo "FAIL: the live site did not render (offline page or blank)"; exit 1; fi
+# The live site rendered inside the app (not the offline page or the site's
+# error screen): read the page text through the WebView's DevTools socket.
+adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}" >/dev/null 2>&1 || true
+node scripts/devtools-text.mjs 9222 > "$OUT/page.json" 2>&1 || true
+cat "$OUT/page.json"
+if grep -qiE "couldn.t load|no page|error" "$OUT/page.json" || ! grep -qiE "rent|book|studio" "$OUT/page.json"; then echo "FAIL: the live site did not render"; exit 1; fi
+echo "site rendered: yes"
 
 # Back button: Capacitor should handle it without closing to a crash.
 adb shell input keyevent KEYCODE_BACK
