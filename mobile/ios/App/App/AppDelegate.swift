@@ -7,9 +7,38 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        #if DEBUG
+        // CI smoke test only (launched with TV_SMOKE=1): print what the page holds.
+        if ProcessInfo.processInfo.environment["TV_SMOKE"] == "1" {
+            for delay in [12.0, 24.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { AppDelegate.probePage(delay) }
+            }
+        }
+        #endif
         return true
     }
+
+    #if DEBUG
+    private static func probePage(_ at: Double) {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let root = scenes.flatMap { $0.windows }.first { $0.isKeyWindow }?.rootViewController
+        guard let bridge = root as? CAPBridgeViewController, let web = bridge.webView else {
+            print("TV_PROBE \(at)s: no bridge view controller")
+            return
+        }
+        let js = """
+        JSON.stringify({ href: location.href, ready: document.readyState, title: document.title,
+          textLen: (document.body && document.body.innerText || '').length,
+          text: (document.body && document.body.innerText || '').replace(/\\s+/g, ' ').slice(0, 160),
+          bodyOpacity: document.body ? getComputedStyle(document.body).opacity : null,
+          firstOpacity: document.body && document.body.firstElementChild ? getComputedStyle(document.body.firstElementChild).opacity : null,
+          visibility: document.visibilityState, w: innerWidth, h: innerHeight })
+        """
+        web.evaluateJavaScript(js) { result, error in
+            print("TV_PROBE \(at)s: \(result ?? "nil") \(error.map { "error: \($0)" } ?? "")")
+        }
+    }
+    #endif
 
     func applicationWillResignActive(_ application: UIApplication) {
         // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
