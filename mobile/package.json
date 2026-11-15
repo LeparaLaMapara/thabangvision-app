@@ -1,0 +1,30 @@
+{
+  "name": "thabangvision-mobile",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ThabangVision for Android and iOS: a Capacitor shell around www.thabangvision.com with sign-in through the system browser, app links, the camera for ID checks and an offline screen.",
+  "scripts": {
+    "presync": "node scripts/sync-version.mjs",
+    "sync": "cap sync",
+    "version:native": "node scripts/sync-version.mjs",
+    "assets": "capacitor-assets generate --iconBackgroundColor '#050505' --iconBackgroundColorDark '#050505' --splashBackgroundColor '#050505' --splashBackgroundColorDark '#050505' --android --ios",
+    "android": "cap open android",
+    "ios": "cap open ios",
+    "doctor": "cap doctor"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
+    "typescript": "^5.6.0",
+    "@capacitor/assets": "^4.0.0"
+  }
+}
