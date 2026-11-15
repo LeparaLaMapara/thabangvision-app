@@ -23,7 +23,17 @@ xcrun simctl bootstatus "$DEVICE" -b
 xcrun simctl install "$DEVICE" "$APP"
 # --console-pty keeps the app's stdout, where Capacitor prints the web page's
 # console (lines starting with the lightning mark), including JavaScript errors.
-( SIMCTL_CHILD_TV_SMOKE=1 xcrun simctl launch --console-pty --terminate-running-process "$DEVICE" "$APP_ID" > "$OUT/console.txt" 2>&1 & )
+# Launch with the console kept; the simulator sometimes drops the first
+# launch, so wait until the app is really running and relaunch if not.
+for TRY in 1 2 3; do
+  ( SIMCTL_CHILD_TV_SMOKE=1 xcrun simctl launch --console-pty --terminate-running-process "$DEVICE" "$APP_ID" > "$OUT/console.txt" 2>&1 & )
+  for i in $(seq 1 20); do
+    xcrun simctl spawn "$DEVICE" launchctl list | grep -q "$APP_ID" && break
+    sleep 1
+  done
+  if xcrun simctl spawn "$DEVICE" launchctl list | grep -q "$APP_ID"; then echo "launched on try $TRY"; break; fi
+  echo "launch try $TRY did not start the app"
+done
 sleep 40
 
 xcrun simctl io "$DEVICE" screenshot "$OUT/launch.png"
