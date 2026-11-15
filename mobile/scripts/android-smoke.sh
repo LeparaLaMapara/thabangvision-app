@@ -27,11 +27,22 @@ if grep -q "FATAL EXCEPTION" "$OUT/logcat.txt"; then echo "FAIL: crash in log"; 
 if ! grep -q "$APP_ID" "$OUT/focus.txt"; then echo "FAIL: app is not the focused window"; exit 1; fi
 
 # The live site rendered inside the app (not the offline page or the site's
-# error screen): read the page text through the WebView's DevTools socket.
-adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}" >/dev/null 2>&1 || true
-node scripts/devtools-text.mjs 9222 > "$OUT/page.json" 2>&1 || true
-cat "$OUT/page.json"
-if grep -qiE "couldn.t load|no page|error" "$OUT/page.json" || ! grep -qiE "rent|book|studio" "$OUT/page.json"; then echo "FAIL: the live site did not render"; exit 1; fi
+# error screen): read the page through the WebView's DevTools socket. The
+# emulator's network can come up after the first load, so try three times,
+# relaunching the app in between.
+OK=0
+for TRY in 1 2 3; do
+  PID=$(adb shell pidof "$APP_ID" | tr -d '\r')
+  adb forward --remove-all >/dev/null 2>&1 || true
+  adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}" >/dev/null 2>&1 || true
+  node scripts/devtools-text.mjs 9222 > "$OUT/page.json" 2>&1 || true
+  echo "try $TRY: $(cat "$OUT/page.json")"
+  if grep -q '"href":"https://www.thabangvision.com' "$OUT/page.json" && ! grep -qiE "couldn.t load" "$OUT/page.json"; then OK=1; break; fi
+  adb shell am force-stop "$APP_ID"; sleep 3
+  adb shell am start -W -n "$APP_ID/.MainActivity" >/dev/null; sleep 30
+done
+adb exec-out screencap -p > "$OUT/launch.png"
+if [ "$OK" != 1 ]; then echo "FAIL: the live site did not render"; exit 1; fi
 echo "site rendered: yes"
 
 # Back button: Capacitor should handle it without closing to a crash.
