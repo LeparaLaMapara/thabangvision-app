@@ -29,7 +29,10 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
                 <data android:host="www.thabangvision.com" />
-                <data android:pathPrefix="/auth/callback" />
+                <!-- Every page of the site: sign-in returns (/auth/callback), card
+                     payment returns (Paystack sends people back to /api/.../callback)
+                     and the WhatsApp "Rent now" links all open in the app. -->
+                <data android:pathPrefix="/" />
             </intent-filter>
         </activity>
 

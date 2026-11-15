@@ -39,6 +39,8 @@ concurrency:
 
 env:
   APP_ID: com.thabangvision.app
+  # The app key's certificate (public): must match the site's assetlinks.json.
+  APP_CERT_SHA256: 2e923d2a8139e2a403c2303bb592ab54192136df95592d17c418d7d6a3846146
 
 jobs:
   android:

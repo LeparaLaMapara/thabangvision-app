@@ -32,7 +32,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
           text: (document.body && document.body.innerText || '').replace(/\\s+/g, ' ').slice(0, 160),
           bodyOpacity: document.body ? getComputedStyle(document.body).opacity : null,
           firstOpacity: document.body && document.body.firstElementChild ? getComputedStyle(document.body.firstElementChild).opacity : null,
-          visibility: document.visibilityState, w: innerWidth, h: innerHeight })
+          visibility: document.visibilityState, w: innerWidth, h: innerHeight,
+          ua: navigator.userAgent.slice(-40), camera: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) })
         """
         web.evaluateJavaScript(js) { result, error in
             print("TV_PROBE \(at)s: \(result ?? "nil") \(error.map { "error: \($0)" } ?? "")")

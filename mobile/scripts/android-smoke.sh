@@ -45,6 +45,36 @@ adb exec-out screencap -p > "$OUT/launch.png"
 if [ "$OK" != 1 ]; then echo "FAIL: the live site did not render"; exit 1; fi
 echo "site rendered: yes"
 
+# Signed with the app key (the fingerprint the site's assetlinks.json names),
+# so app links and Google sign-in can return to the app.
+SIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
+CERT=$("$SIGNER" verify --print-certs "$APK" 2>/dev/null | grep -m1 "SHA-256 digest" | awk '{print $NF}')
+echo "apk certificate: $CERT"
+if [ "$CERT" != "${APP_CERT_SHA256:-}" ]; then echo "FAIL: APK not signed with the app key (expected ${APP_CERT_SHA256:-unset})"; exit 1; fi
+
+# App links verified for www.thabangvision.com, and a site link opens the app.
+adb shell pm verify-app-links --re-verify "$APP_ID" >/dev/null 2>&1 || true
+sleep 15
+adb shell pm get-app-links "$APP_ID" | tee "$OUT/app-links.txt"
+if ! grep -q "www.thabangvision.com: verified" "$OUT/app-links.txt"; then echo "FAIL: app links not verified for www.thabangvision.com"; exit 1; fi
+adb shell am start -W -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d "https://www.thabangvision.com/rentals" >/dev/null
+sleep 10
+adb shell dumpsys window | grep -E 'mCurrentFocus' | tee "$OUT/link-focus.txt"
+if ! grep -q "$APP_ID" "$OUT/link-focus.txt"; then echo "FAIL: a site link opened outside the app"; exit 1; fi
+
+# The camera works inside the app (the instant ID check needs it), and the
+# site sees the app's user agent token.
+adb shell pm grant "$APP_ID" android.permission.CAMERA || true
+PID=$(adb shell pidof "$APP_ID" | tr -d '\r')
+adb forward --remove-all >/dev/null 2>&1 || true
+adb forward tcp:9222 "localabstract:webview_devtools_remote_${PID}" >/dev/null 2>&1 || true
+UA=$(node scripts/devtools-eval.mjs 9222 'navigator.userAgent')
+echo "user agent: $UA"
+if ! echo "$UA" | grep -q "ThabangVisionApp/android"; then echo "FAIL: app token missing from the user agent"; exit 1; fi
+CAM=$(node scripts/devtools-eval.mjs 9222 'navigator.mediaDevices.getUserMedia({video:true}).then(s=>{const n=s.getVideoTracks().length; s.getTracks().forEach(t=>t.stop()); return "video tracks: "+n}).catch(e=>"camera error: "+e.name+" "+e.message)')
+echo "$CAM" | tee "$OUT/camera.txt"
+if ! echo "$CAM" | grep -q "video tracks: [1-9]"; then echo "FAIL: the camera did not open inside the app"; exit 1; fi
+
 # Back button: Capacitor should handle it without closing to a crash.
 adb shell input keyevent KEYCODE_BACK
 sleep 3
