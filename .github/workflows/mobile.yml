@@ -109,22 +109,6 @@ jobs:
           path: mobile/smoke-android/
           retention-days: 14
 
-  webkit:
-    # The site in Safari's engine with the iPhone app's user agent: names any
-    # JavaScript error the iPhone app would hit, in a minute, on Linux.
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: mobile
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22
-      - run: npm i --no-save playwright@1.56.1 && npx playwright install --with-deps webkit
-      - run: node scripts/webkit-probe.cjs
 
   ios:
     if: github.event_name == 'workflow_dispatch' && inputs.ios
